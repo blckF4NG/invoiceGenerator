@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Generator</title>
+  <!-- Precompiled Tailwind CSS -->
+  <link href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <style>
+    @media print {
+      .no-print { display: none; }
+    }
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid black; padding: 4px; }
+    .invoice-table th, .invoice-table td { font-size: 12px; }
+    .tax-table { margin-top: 20px; }
+    .tax-table th, .tax-table td { font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    "use strict";
+
+    const initialConsignees = [
+      { name: "BAPS SWAMINARAYAN SANSTHA", address: "AKSHARDHAM MANDIR, PRAMUKH SWAMI MAHARAJ MARG, DELHI - 110092", gst: "N/A" },
+      { name: "IndoThai", address: "Barnali Complex, LGBI Airport, Guwahati Airport, Guwahati - 781015", gst: "18AAJCG5208N1Z"},
+      { name: "SHUBHASHISH WEALTH MANAGEMENT CONSULTANTS LLP", address: "3rd Floor, Shubhashish Corporate Tower, 12-13 Rathore Nagar, Queens Road, Vaishali Nagar, Jaipur", gst: "08ADQFS2451N1ZE"},
+      { name: "BKJ Airports (Dehradun) Private Limited"},
+      { name: "M/S INDOTHAI PUNE PRIVATE LIMITED", address: "1st Floor, S No 164/2B, Pt 44. Srushti Apartment, Adarsh Colony, Tingre Nagar, Yerwada, Pune - 411006", gst: "27AAGCI0140N1ZK"},
+      { name: "M/S GSEC INDOTHAI GROUND HANDLING PVT LTD", address: "Departure Terminal, Unit No. 5, Sanganer, Airport, Airport Road, Sanganer, jaipur, Rajasthan - 302029", gst: "08AAJCG5208N1Z8"},
+      { name: "M/S GSEC INDOTHAI GROUND HANDLING PVT LTD", address: "Jaipur International Airport, Airport Road, Sanganer, Jaipur, Rajasthan - 302029", gst: ""},
+      { name: "INDOTHAI KOLKATA PRIVATE LIMITED", address: "2nd Floor, Room No S2, Silver Arcade, 5 JBS Halden Avenue, Kolkata, West Bengal - 700105", gst: "19AAGCI0080B1ZZ"},
+      { name: "INDOTHAI KOLKATA PRIVATE LIMITED", address: "Netaji Subhash Chandra Bose International Airport, Airport Service Rd, International Airport, Dum Dum, Kolkata, West Bengal - 700052", gst: ""},
+      { name: "INDOTHAI BHUBANESHWAR PVT. LTD.", address: "GROUND FLOOR, VIM-610, SAILASHREE VIHAR, CHANDRA SHEKHARPUR, BHUBANESHWAR, KHORDH, ODISHA- 751021", gst: "21AAGCI0848D1Z2"},
+      { name: " INDOTHAI BHUBANESHWAR PRIVATE LIMITED", address: "Biju Patnaik International Airport, Aerodrome Area, Bhubaneshwar Airport, Odisha - 751020", gst: ""},
+    ];
+
+    const initialBuyers = [
+      { name: "BAPS SWAMINARAYAN SANSTHA", address: "AKSHARDHAM MANDIR, PRAMUKH SWAMI MAHARAJ MARG, DELHI - 110092", gst: "N/A" },
+      { name: "IndoThai", address: "Barnali Complex, LGBI Airport, Guwahati Airport, Guwahati - 781015", gst: "18AAJCG5208N1Z"},
+      { name: "SHUBHASHISH WEALTH MANAGEMENT CONSULTANTS LLP", address: "3rd Floor, Shubhashish Corporate Tower, 12-13 Rathore Nagar, Queens Road, Vaishali Nagar, Jaipur", gst: "08ADQFS2451N1ZE"},
+      { name: "BKJ Airports (Dehradun) Private Limited"},
+      { name: "M/S INDOTHAI PUNE PRIVATE LIMITED", address: "1st Floor, S No 164/2B, Pt 44. Srushti Apartment, Adarsh Colony, Tingre Nagar, Yerwada, Pune - 411006", gst: "27AAGCI0140N1ZK"},
+      { name: "M/S GSEC INDOTHAI GROUND HANDLING PVT LTD", address: "Departure Terminal, Unit No. 5, Sanganer, Airport, Airport Road, Sanganer, jaipur, Rajasthan - 302029", gst: "08AAJCG5208N1Z8"},
+      { name: "M/S GSEC INDOTHAI GROUND HANDLING PVT LTD", address: "Jaipur International Airport, Airport Road, Sanganer, Jaipur, Rajasthan - 302029", gst: ""},
+      { name: "INDOTHAI KOLKATA PRIVATE LIMITED", address: "2nd Floor, Room No S2, Silver Arcade, 5 JBS Halden Avenue, Kolkata, West Bengal - 700105", gst: "19AAGCI0080B1ZZ"},
+      { name: "INDOTHAI KOLKATA PRIVATE LIMITED", address: "Netaji Subhash Chandra Bose International Airport, Airport Service Rd, International Airport, Dum Dum, Kolkata, West Bengal - 700052", gst: ""},
+      { name: "INDOTHAI BHUBANESHWAR PVT. LTD.", address: "GROUND FLOOR, VIM-610, SAILASHREE VIHAR, CHANDRA SHEKHARPUR, BHUBANESHWAR, KHORDH, ODISHA- 751021", gst: "21AAGCI0848D1Z2"},
+      { name: " INDOTHAI BHUBANESHWAR PRIVATE LIMITED", address: "Biju Patnaik International Airport, Aerodrome Area, Bhubaneshwar Airport, Odisha - 751020", gst: ""},
+    ];
+
+    const initialGoods = [
+  { description: "Baggage Trolley - Closed Type", hsn: "8716", gstRate: 18, rate: 74000, per: "Nos." },
+  { description: "Universal Towable Passenger Step Ladder", hsn: "842890", gstRate: 18, rate: 475000, per: "Nos." },
+  { description: "Water Cart", hsn: "7309", gstRate: 18, rate: 210000, per: "Nos." },
+  { description: "Toilet Cart", hsn: "7309", gstRate: 18, rate: 215000, per: "Nos." },
+  { description: "Towable Passenger Ramp", hsn: "842890", gstRate: 18, rate: 700000, per: "Nos." },
+  { description: "Towable Passenger Ramp Ladder with Canopy", hsn: "842890", gstRate: 18, rate: 555000, per: "Nos." },
+  { description: "Towable Passenger Ramp with Canopy", hsn: "842890", gstRate: 18, rate: 625000, per: "Nos." },
+  { description: "Passenger Step Ladder - Job Work", hsn: "9988", gstRate: 18, rate: 76000, per: "Nos." },
+  { description: "BFL - Job Work II", hsn: "9988", gstRate: 18, rate: 71250, per: "Nos." },
+  { description: "BFL - Job Work I", hsn: "9988", gstRate: 18, rate: 18525, per: "Nos." },
+  { description: "BT (Closed) - Job Work I", hsn: "9988", gstRate: 18, rate: 5700, per: "Nos." },
+  { description: "BT (Closed) - Job Work II", hsn: "9988", gstRate: 18, rate: 30400, per: "Nos." },
+  { description: "BT (Open) - Job Work II", hsn: "9988", gstRate: 18, rate: 32300, per: "Nos." },
+  { description: "BT (Open) - Job Work I", hsn: "9988", gstRate: 18, rate: 2500, per: "Nos." },
+  { description: "Fire Trolley", hsn: "8716", gstRate: 18, rate: 15000, per: "Nos." },
+  { description: "Fuel Trolley 5 Feet", hsn: "8716", gstRate: 18, rate: 33000, per: "Nos." },
+  { description: "Pushback Job Work", hsn: "9988", gstRate: 18, rate: 450000, per: "Nos." },
+  { description: "Coach Job work", hsn: "9988", gstRate: 18, rate: 200000, per: "Nos." },
+  { description: "Trestle  Maintenance Stand", hsn: "8716", gstRate: 18, rate: 65000, per: "Nos." },
+  { description: "Refueling Trestle", hsn: "8716", gstRate: 18, rate: 33000, per: "Nos." },
+  { description: "AIR FILTER PRIMARY ELEMENT", hsn: "842131", gstRate: 18, rate: 2300, per: "Nos." },
+  { description: "ALL ELECTRICAL WORK LABOUR", hsn: "998714", gstRate: 18, rate: 3500, per: "Nos." },
+  { description: "ALTERNATOR 24V 90AMP BS1/2/3/4", hsn: "851150", gstRate: 28, rate: 16000, per: "Nos." },
+  { description: "HUB GEASING LUBRICATIO", hsn: "998714", gstRate: 18, rate: 3200, per: "Nos." },
+  { description: "P U PAINT AUTO RL5015", hsn: "3209", gstRate: 18, rate: 28000, per: "Nos." },
+  { description: "PAINT LABOUR CHARGE (", hsn: "9988", gstRate: 18, rate: 20000, per: "Nos." },
+  { description: "HARENESS WIRING ENGINE", hsn: "854430", gstRate: 18, rate: 45000, per: "Nos." },
+  { description: "TRANSMISSION CONTROL MODULE", hsn: "854430", gstRate: 18, rate: 85000, per: "Nos." },
+  { description: "VALVE FUEL FL(FCV)", hsn: "848140", gstRate: 18, rate: 65000, per: "Nos." },
+  { description: "MODULE IGNITION CONTROL BS3/4", hsn: "903289", gstRate: 18, rate: 35000, per: "Nos." },
+  { description: "OIL FILTER", hsn: "842123", gstRate: 18, rate: 1700, per: "Nos." },
+  { description: "FUEL PUMP CALBRATION", hsn: "8421", gstRate: 18, rate: 12000, per: "Nos." },
+  { description: "FUEL TANK CLEANING", hsn: "9988", gstRate: 18, rate: 2000, per: "Nos." },
+  { description: "DRIVING CABIN REFB", hsn: "7308", gstRate: 18, rate: 10000, per: "Nos." },
+  { description: "TYRE REPLACED", hsn: "401120", gstRate: 28, rate: 96000, per: "Nos." },
+  { description: "AIR PRESSURE  ASSEMBLY", hsn: "8421", gstRate: 18, rate: "", per: "Nos." },
+  { description: "RADIATOR", hsn: "9988", gstRate: 18, rate: "", per: "Nos." },
+  { description: "ALTERNATOR 24V", hsn: "851150", gstRate: 28, rate: "", per: "Nos." },
+  { description: "BATTERY 150AH", hsn: "850710", gstRate: 28, rate: "", per: "Nos." },
+  { description: "Complete Service labour charge", hsn: "9987", gstRate: 18, rate: "", per: "Nos." },
+  { description: "ENGINE OIL", hsn: "271019", gstRate: 18, rate: "", per: "Nos." },
+  { description: "TRANSMISSION OIL", hsn: "271019", gstRate: 18, rate: "", per: "Nos." },
+  { description: "TRANSMISSION FILTER", hsn: "8421", gstRate: 18, rate: "", per: "Nos." },
+  { description: "AIR PRESSURE  VALVE", hsn: "8481", gstRate: 18, rate: "", per: "Nos." },
+  { description: "PAINT LABOUR CHARGE ", hsn: "9987", gstRate: 18, rate: 20000, per: "Nos." },
+  { description: "ASSY ACCELETOR PEDAL UNIT", hsn: "870899", gstRate: 28, rate: 2300, per: "Nos." }
+];
+
+    const initialTransport = [
+      { name: "Chirag Transport UP14PT8478", destination: "Jewar International Airport" },
+    ];
+
+    const initialOrders = ["As per mail"];
+
+    const numberToWordsIndian = (num) => {
+      if (num === 0) return "Zero";
+      const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+      const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+      const thousands = ["", "Thousand", "Lakh", "Crore"];
+
+      const numToWords = (n) => {
+        if (n < 10) return units[n];
+        if (n < 20) return teens[n - 10];
+        if (n < 100) return `${tens[Math.floor(n / 10)]} ${units[n % 10]}`.trim();
+        if (n < 1000) return `${units[Math.floor(n / 100)]} Hundred ${numToWords(n % 100)}`.trim();
+        return "";
+      };
+
+      let words = "";
+      let crore = Math.floor(num / 10000000);
+      num %= 10000000;
+      let lakh = Math.floor(num / 100000);
+      num %= 100000;
+      let thousand = Math.floor(num / 1000);
+      num %= 1000;
+
+      if (crore > 0) words += `${numToWords(crore)} Crore `;
+      if (lakh > 0) words += `${numToWords(lakh)} Lakh `;
+      if (thousand > 0) words += `${numToWords(thousand)} Thousand `;
+      if (num > 0) words += numToWords(num);
+
+      return words.trim() + " Only";
+    };
+
+    const InvoiceGenerator = () => {
+      const [invoiceNo, setInvoiceNo] = React.useState("43");
+      const [date, setDate] = React.useState("08-07-25");
+      const [consignee, setConsignee] = React.useState(initialConsignees[0]);
+      const [buyer, setBuyer] = React.useState(initialConsignees[0]);
+      const [orderNo, setOrderNo] = React.useState(initialOrders[0]);
+      const [transport, setTransport] = React.useState(initialTransport[0]);
+      const [items, setItems] = React.useState([{ ...initialGoods[0], quantity: 1 }]);
+      const [consignees, setConsignees] = React.useState(initialConsignees);
+      const [buyers, setBuyers] = React.useState(initialBuyers);
+      const [goods, setGoods] = React.useState(initialGoods);
+      const [transports, setTransports] = React.useState(initialTransport);
+      const [orders, setOrders] = React.useState(initialOrders);
+      const [showConsigneeForm, setShowConsigneeForm] = React.useState(false);
+      const [showGoodsForm, setShowGoodsForm] = React.useState(false);
+      const [showTransportForm, setShowTransportForm] = React.useState(false);
+      const [showOrderForm, setShowOrderForm] = React.useState(false);
+      
+      const visibleItems = items.filter(item => item.quantity > 0);
+
+      const calculateTotals = () => {
+        const taxableValue = visibleItems.reduce((sum, item) => sum + item.rate * item.quantity, 0);
+        const taxAmount = visibleItems.reduce((sum, item) => sum + (item.rate * item.quantity * item.gstRate) / 100, 0);
+        const totalAmount = taxableValue + taxAmount;
+        return { taxableValue, taxAmount, totalAmount };
+      };
+
+      const { taxableValue, taxAmount, totalAmount } = calculateTotals();
+      const roundedTotalAmount = Math.round(totalAmount);
+
+      const formatIndianNumber = (num) => {
+        return num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+
+      const addItem = () => {
+        setItems([...items, { ...initialGoods[0], quantity: 1 }]);
+      };
+
+      const updateItem = (index, field, value) => {
+  let newItems = [...items];
+  newItems[index] = { ...newItems[index], [field]: value };
+  // Remove the item if quantity is set to 0
+  if (field === "quantity" && value === 0) {
+    newItems = newItems.filter((_, i) => i !== index);
+  }
+  setItems(newItems);
+};
+
+      const addConsignee = (newConsignee) => {
+        setConsignees([...consignees, newConsignee]);
+        setShowConsigneeForm(false);
+      };
+
+      const addGood = (newGood) => {
+        setGoods([...goods, newGood]);
+        setShowGoodsForm(false);
+      };
+
+      const addTransport = (newTransport) => {
+        setTransports([...transports, newTransport]);
+        setShowTransportForm(false);
+      };
+
+      const addOrder = (newOrder) => {
+        setOrders([...orders, newOrder]);
+        setShowOrderForm(false);
+      };
+
+      const downloadPDF = () => {
+        const element = document.getElementById("invoice");
+        const opt = {
+          margin: [0.5, 0.2, 0.5, 0.2],
+          filename: `Invoice_${invoiceNo}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+        };
+        html2pdf().from(element).set(opt).save();
+      };
+
+      return React.createElement(
+        "div",
+        { className: "p-6 max-w-4xl mx-auto" },
+        React.createElement("h1", { className: "text-2xl font-bold mb-4 no-print" }, "Invoice Generator"),
+        React.createElement(
+          "div",
+          { className: "mb-6 no-print" },
+          React.createElement(
+            "div",
+            { className: "grid grid-cols-2 gap-4 mb-4" },
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Invoice No."),
+              React.createElement("input", {
+                type: "text",
+                value: invoiceNo,
+                onChange: (e) => setInvoiceNo(e.target.value),
+                className: "mt-1 p-2 border rounded w-full",
+              })
+            ),
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Date"),
+              React.createElement("input", {
+                type: "text",
+                value: date,
+                onChange: (e) => setDate(e.target.value),
+                className: "mt-1 p-2 border rounded w-full",
+              })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "grid grid-cols-2 gap-4 mb-4" },
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Consignee (Ship to)"),
+              React.createElement(
+    "select",
+    {
+      value: consignees.findIndex(c => c.name === consignee.name && c.address === consignee.address && c.gst === consignee.gst),
+      onChange: (e) => setConsignee(consignees[parseInt(e.target.value)]),
+      className: "mt-1 p-2 border rounded w-full"
+    },
+    consignees.map((c, index) =>
+      React.createElement("option", { key: index, value: index }, c.name)
+    )
+  ),
+              React.createElement(
+                "button",
+                { onClick: () => setShowConsigneeForm(true), className: "mt-2 text-blue-600 hover:underline" },
+                "Add/Edit Consignee"
+              )
+            ),
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Buyer (Bill to)"),
+              React.createElement(
+                "select",
+                {
+                  value: buyer.name,
+                  onChange: (e) => setBuyer(consignees.find((c) => c.name === e.target.value)),
+                  className: "mt-1 p-2 border rounded w-full",
+                },
+                consignees.map((c, index) =>
+                  React.createElement("option", { key: index, value: c.name }, c.name)
+                )
+              )
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "grid grid-cols-2 gap-4 mb-4" },
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Buyer's Order No."),
+              React.createElement(
+                "select",
+                {
+                  value: orderNo,
+                  onChange: (e) => setOrderNo(e.target.value),
+                  className: "mt-1 p-2 border rounded w-full",
+                },
+                orders.map((o, index) => React.createElement("option", { key: index, value: o }, o))
+              ),
+              React.createElement(
+                "button",
+                { onClick: () => setShowOrderForm(true), className: "mt-2 text-blue-600 hover:underline" },
+                "Add/Edit Order"
+              )
+            ),
+            React.createElement(
+              "div",
+              null,
+              React.createElement("label", { className: "block text-sm font-medium" }, "Dispatched Through"),
+              React.createElement(
+                "select",
+                {
+                  value: transport.name,
+                  onChange: (e) => setTransport(transports.find((t) => t.name === e.target.value)),
+                  className: "mt-1 p-2 border rounded w-full",
+                },
+                transports.map((t, index) =>
+                  React.createElement("option", { key: index, value: t.name }, t.name)
+                )
+              ),
+              React.createElement(
+                "button",
+                { onClick: () => setShowTransportForm(true), className: "mt-2 text-blue-600 hover:underline" },
+                "Add/Edit Transport"
+              )
+            )
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "mb-6 no-print" },
+          React.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Items"),
+          visibleItems.map((item, index) =>
+            React.createElement(
+              "div",
+              { key: index, className: "grid grid-cols-5 gap-4 mb-2" },
+              React.createElement(
+                "select",
+               {
+    value: (() => {
+      const idx = goods.findIndex(g =>
+        g.description === item.description &&
+        g.hsn === item.hsn &&
+        g.gstRate === item.gstRate &&
+        g.rate === item.rate &&
+        g.per === item.per
+      );
+      return idx !== -1 ? idx : 0;
+    })(),
+    onChange: (e) => {
+      const selectedGood = goods[parseInt(e.target.value)];
+      const newItems = [...items];
+      newItems[index] = { ...selectedGood, quantity: items[index].quantity };
+      setItems(newItems);
+    },
+    className: "p-2 border rounded",
+  },
+  goods.map((g, i) =>
+    React.createElement(
+      "option",
+      { key: i, value: i },
+      `${g.description} | HSN: ${g.hsn} | GST: ${g.gstRate}% | Rate: ₹${g.rate} | Per: ${g.per}`
+    )
+  )
+),
+              React.createElement("input", {
+                type: "number",
+                value: item.quantity,
+                onChange: (e) => updateItem(index, "quantity", parseInt(e.target.value)),
+                className: "p-2 border rounded",
+                placeholder: "Quantity",
+              }),
+              React.createElement("input", {
+                type: "text",
+                value: item.hsn,
+                readOnly: true,
+                className: "p-2 border rounded bg-gray-100",
+              }),
+              React.createElement("input", {
+                type: "text",
+                value: `${item.gstRate}%`,
+                readOnly: true,
+                className: "p-2 border rounded bg-gray-100",
+              }),
+              React.createElement("input", {
+                type: "text",
+                value: formatIndianNumber(item.rate * item.quantity),
+                readOnly: true,
+                className: "p-2 border rounded bg-gray-100",
+              })
+            )
+          ),
+          React.createElement(
+            "button",
+            { onClick: addItem, className: "mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" },
+            "Add Item"
+          ),
+          React.createElement(
+            "button",
+            { onClick: () => setShowGoodsForm(true), className: "mt-2 ml-2 text-blue-600 hover:underline" },
+            "Add/Edit Goods"
+          )
+        ),
+        showConsigneeForm &&
+          React.createElement(
+            "div",
+            { className: "mb-6 p-4 border rounded no-print" },
+            React.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Add Consignee"),
+            React.createElement(
+              "form",
+              {
+                onSubmit: (e) => {
+                  e.preventDefault();
+                  addConsignee({
+                    name: e.target.name.value,
+                    address: e.target.address.value,
+                    gst: e.target.gst.value,
+                  });
+                  e.target.reset();
+                },
+              },
+              React.createElement("input", {
+                type: "text",
+                name: "name",
+                placeholder: "Name",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "text",
+                name: "address",
+                placeholder: "Address",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "text",
+                name: "gst",
+                placeholder: "GST No.",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement(
+                "button",
+                { type: "submit", className: "bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" },
+                "Save Consignee"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowConsigneeForm(false),
+                  className: "ml-2 text-red-600 hover:underline",
+                },
+                "Cancel"
+              )
+            )
+          ),
+        showGoodsForm &&
+          React.createElement(
+            "div",
+            { className: "mb-6 p-4 border rounded no-print" },
+            React.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Add Goods"),
+            React.createElement(
+              "form",
+              {
+                onSubmit: (e) => {
+                  e.preventDefault();
+                  addGood({
+                    description: e.target.description.value,
+                    hsn: e.target.hsn.value,
+                    gstRate: parseInt(e.target.gstRate.value),
+                    rate: parseFloat(e.target.rate.value),
+                    per: e.target.per.value,
+                  });
+                  e.target.reset();
+                },
+              },
+              React.createElement("input", {
+                type: "text",
+                name: "description",
+                placeholder: "Description",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "text",
+                name: "hsn",
+                placeholder: "HSN",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "number",
+                name: "gstRate",
+                placeholder: "GST Rate (%)",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "number",
+                name: "rate",
+                placeholder: "Rate (₹)",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "text",
+                name: "per",
+                placeholder: "Per (e.g., NOS)",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement(
+                "button",
+                { type: "submit", className: "bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" },
+                "Save Goods"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowGoodsForm(false),
+                  className: "ml-2 text-red-600 hover:underline",
+                },
+                "Cancel"
+              )
+            )
+          ),
+        showTransportForm &&
+          React.createElement(
+            "div",
+            { className: "mb-6 p-4 border rounded no-print" },
+            React.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Add Transport"),
+            React.createElement(
+              "form",
+              {
+                onSubmit: (e) => {
+                  e.preventDefault();
+                  addTransport({
+                    name: e.target.name.value,
+                    destination: e.target.destination.value,
+                  });
+                  e.target.reset();
+                },
+              },
+              React.createElement("input", {
+                type: "text",
+                name: "name",
+                placeholder: "Transport Name",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement("input", {
+                type: "text",
+                name: "destination",
+                placeholder: "Destination",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement(
+                "button",
+                { type: "submit", className: "bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" },
+                "Save Transport"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowTransportForm(false),
+                  className: "ml-2 text-red-600 hover:underline",
+                },
+                "Cancel"
+              )
+            )
+          ),
+        showOrderForm &&
+          React.createElement(
+            "div",
+            { className: "mb-6 p-4 border rounded no-print" },
+            React.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Add Buyer's Order"),
+            React.createElement(
+              "form",
+              {
+                onSubmit: (e) => {
+                  e.preventDefault();
+                  addOrder(e.target.order.value);
+                  e.target.reset();
+                },
+              },
+              React.createElement("input", {
+                type: "text",
+                name: "order",
+                placeholder: "Order No.",
+                className: "mb-2 p-2 border rounded w-full",
+                required: true,
+              }),
+              React.createElement(
+                "button",
+                { type: "submit", className: "bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" },
+                "Save Order"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowOrderForm(false),
+                  className: "ml-2 text-red-600 hover:underline",
+                },
+                "Cancel"
+              )
+            )
+          ),
+        React.createElement(
+          "div",
+          { id: "invoice", className: "p-2 bg-white", style: { fontFamily: "Arial, sans-serif", fontSize: "12px" } },
+          React.createElement(
+            "table",
+            { className: "w-full invoice-table" },
+            React.createElement(
+              "tbody",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                React.createElement(
+                  "td",
+                  { style: { width: "60%", verticalAlign: "top" } },
+                  React.createElement("strong", null, "SSD Aviation Techno Pvt Ltd"),
+                  React.createElement("br"),
+                  "Plot No 49, Kami Road, Asadpur Nandnaur, Kami-Ganur Road Sonipat, Haryana - 131027",
+                  React.createElement("br"),
+                  React.createElement("strong", null, "06ABOCS1545E1ZC")
+                ),
+                React.createElement(
+                  "td",
+                  { style: { width: "20%" } },
+                  "Invoice No.",
+                  React.createElement("br"),
+                  React.createElement("strong", null, invoiceNo)
+                ),
+                React.createElement(
+                  "td",
+                  { style: { width: "20%" } },
+                  "Dated",
+                  React.createElement("br"),
+                  React.createElement("strong", null, date)
+                )
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null),
+                React.createElement("td", null, "Delivery Note", React.createElement("br")),
+                React.createElement("td", null, "Mode/Terms of Payment", React.createElement("br"))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null),
+                React.createElement("td", null, "Reference No. & Date.", React.createElement("br")),
+                React.createElement("td", null, "Other References", React.createElement("br"))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement(
+                  "td",
+                  null,
+                  "Consignee (Ship to)",
+                  React.createElement("br"),
+                  React.createElement("strong", null, consignee.name),
+                  React.createElement("br"),
+                  consignee.address,
+                  React.createElement("br"),
+                  consignee.gst
+    ? [React.createElement("br"), "GST: ", consignee.gst]
+    : null
+),
+                React.createElement(
+                  "td",
+                  null,
+                  "Buyer's Order No.",
+                  React.createElement("br"),
+                  React.createElement("strong", null, orderNo)
+                ),
+                React.createElement("td", null, "Dated", React.createElement("br"))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null),
+                React.createElement("td", null, "Dispatch From", React.createElement("br")),
+                React.createElement("td", null, "Delivery Note Date", React.createElement("br"))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null),
+                React.createElement("td", null, "Dispatched Through", React.createElement("br"), React.createElement("strong", null, transport.name)),
+                React.createElement("td", null, "Destination", React.createElement("br"), React.createElement("strong", null, transport.destination))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement(
+                  "td",
+                  null,
+                  "Buyer (Bill to)",
+                  React.createElement("br"),
+                  React.createElement("strong", null, buyer.name),
+                  React.createElement("br"),
+                  buyer.address,
+                  React.createElement("br"),
+                   buyer.gst
+    ? [React.createElement("br"), "GST: ", buyer.gst]
+    : null
+),
+                React.createElement(
+                  "td",
+                  null,
+                  "Terms of Delivery",
+                  React.createElement("br"),
+                  React.createElement("strong", null, "100% Against Delivery")
+                ),
+                React.createElement("td", null)
+              )
+            )
+          ),
+          React.createElement(
+            "table",
+            { className: "w-full invoice-table mt-2" },
+            React.createElement(
+              "thead",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("th", { style: { width: "5%" } }, "S. No."),
+                React.createElement("th", { style: { width: "35%" } }, "Description of Goods"),
+                React.createElement("th", { style: { width: "10%" } }, "HSN"),
+                React.createElement("th", { style: { width: "10%" } }, "GST Rate"),
+                React.createElement("th", { style: { width: "10%" } }, "Quantity"),
+                React.createElement("th", { style: { width: "10%" } }, "Rate (₹)"),
+                React.createElement("th", { style: { width: "10%" } }, "Per"),
+                React.createElement("th", { style: { width: "10%" } }, "Amount (₹)")
+              )
+            ),
+            React.createElement(
+              "tbody",
+              null,
+              // ...existing code...
+// ...existing code...
+visibleItems.map((item, index) =>
+  React.createElement(
+    "tr",
+    { key: index },
+    React.createElement("td", null, index + 1),
+    React.createElement("td", null, item.description),
+    React.createElement("td", null, item.hsn),
+    React.createElement("td", null, item.gstRate, "%"),
+    React.createElement("td", null, item.quantity, " ", item.per),
+    React.createElement("td", null, formatIndianNumber(item.rate)),
+    React.createElement("td", null, item.per),
+    React.createElement("td", null, formatIndianNumber(item.rate * item.quantity))
+  )
+),
+// --- Tax Amount Row (insert this just before the Total row) ---
+React.createElement(
+  "tr",
+  null,
+  React.createElement("td", null),
+  React.createElement("td", { style: { textAlign: "right", fontStyle: "italic", background: "#f9fafb" } },
+    "IGST: ", visibleItems.length > 0 ? items[0].gstRate : 0, "%"
+  ),
+  React.createElement("td", null),
+  React.createElement("td", null),
+  // IGST % in GST Rate column
+  
+  React.createElement("td", null),
+  React.createElement("td", null),
+  React.createElement("td", null),
+  // Tax Amount in Amount column
+  React.createElement("td", { style: { background: "#f9fafb" } },
+     formatIndianNumber(taxAmount)
+  )
+),
+// --- End Tax Amount Row ---
+React.createElement(
+  "tr",
+  null,
+  React.createElement("td", { colSpan: "7", style: { textAlign: "right", fontWeight: "bold" } }, "Total"),
+  React.createElement("td", { style: { fontWeight: "bold" } }, "₹ ", formatIndianNumber(roundedTotalAmount))
+))),
+          React.createElement(
+            "p",
+            { className: "mt-2" },
+            React.createElement("em", null, "Amount Chargeable (in words)"),
+            React.createElement("br"),
+React.createElement("strong", null, "₹ ", numberToWordsIndian(roundedTotalAmount))          ),
+          React.createElement(
+            "table",
+            { className: "w-full tax-table" },
+            React.createElement(
+              "thead",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("th", null, "HSN/SAC"),
+                React.createElement("th", null, "Taxable Value"),
+                React.createElement("th", { colSpan: "2" }, "Integrated Tax"),
+                React.createElement("th", null, "Total Tax Amount")
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("th", null),
+                React.createElement("th", null),
+                React.createElement("th", null, "Rate"),
+                React.createElement("th", null, "Amount"),
+                React.createElement("th", null)
+              )
+            ),
+            React.createElement(
+              "tbody",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null, visibleItems[0] ? visibleItems[0].hsn : ""),
+                React.createElement("td", null, formatIndianNumber(taxableValue)),
+                React.createElement("td", null, visibleItems[0] ? visibleItems[0].gstRate : "", "%"),
+                React.createElement("td", null, formatIndianNumber(taxAmount))
+              ),
+              React.createElement(
+                "tr",
+                null,
+                React.createElement("td", null, React.createElement("strong", null, "Total")),
+                React.createElement("td", null, React.createElement("strong", null, formatIndianNumber(taxableValue))),
+                React.createElement("td", null),
+                React.createElement("td", null, React.createElement("strong", null, formatIndianNumber(taxAmount))),
+                React.createElement("td", null, React.createElement("strong", null, formatIndianNumber(taxAmount)))
+              )
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "mt-4 flex justify-between" },
+            React.createElement(
+              "div",
+              null,
+              React.createElement(
+                "p",
+                null,
+                "Bank Name: HDFC Bank",
+                React.createElement("br"),
+                "A/c No.: 50200104459653",
+                React.createElement("br"),
+                "IFSC Code: HDFC0007876"
+              )
+            ),
+            React.createElement("div", null)
+          ),
+          React.createElement(
+            "div",
+            { className: "mt-4 flex justify-between" },
+            React.createElement(
+              "p",
+              null,
+              "Declaration",
+              React.createElement("br"),
+              "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct."
+            ),
+            React.createElement(
+              "p",
+              { style: { textAlign: "right" } },
+              React.createElement("strong", null, "For SSD Aviation Techno Pvt. Ltd."),
+              React.createElement("br"),
+              React.createElement("img", {
+              src: "sahilSign.png", // Use your image path or URL
+              alt: "Authorised Signatory",
+              style: { width: "65px", margin: "10px 0" }
+    }), 
+             
+              React.createElement("br"),
+              "Authorised Signatory"
+            )
+          )
+        ),
+        React.createElement(
+          "button",
+          {
+            onClick: downloadPDF,
+            className: "mt-6 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 no-print",
+          },
+          "Download PDF"
+        )
+      );
+    };
+
+    ReactDOM.render(React.createElement(InvoiceGenerator), document.getElementById("root"));
+  </script>
+</body>
+</html>
